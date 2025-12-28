@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>衣橱管理顾问APP原型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D9C59',
+                        secondary: '#F5F5F5',
+                        warning: '#DF2E38',
+                        dark: '#333333',
+                        gray: '#666666'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #F9F9F9;
+        }
+        
+        .card-shadow {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            transition: transform 0.2s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .status-active {
+            border-left: 4px solid #5D9C59;
+        }
+        
+        .status-ready {
+            border-left: 4px solid #DF2E38;
+            animation: pulse 2s infinite;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #E8E8E8;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background-color: #5D9C59;
+            transition: width 0.5s ease;
+        }
+        
+        .clothing-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        /* 模拟iOS样式 */
+        .ios-segmented-control {
+            display: flex;
+            background-color: #F0F0F0;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        
+        .ios-segmented-control button {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background-color: transparent;
+            color: #666;
+            transition: all 0.2s;
+        }
+        
+        .ios-segmented-control button.active {
+            background-color: white;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 页面切换动画 */
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        
+        /* 添加衣物动画 */
+        .add-clothing-animation {
+            animation: bounceIn 0.6s ease;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* 断舍离卡片闪烁效果 */
+        @keyframes borderPulse {
+            0%, 100% { border-color: rgba(223, 46, 56, 0.5); }
+            50% { border-color: rgba(223, 46, 56, 1); }
+        }
+        
+        .discard-pulse {
+            animation: borderPulse 2s infinite;
+            border: 2px solid rgba(223, 46, 56, 0.5);
+        }
+    </style>
+</head>
+<body class="text-dark">
+    <!-- 顶部状态栏（模拟iOS） -->
+    <div class="bg-white py-2 px-4 flex justify-between items-center border-b border-gray-200">
+        <div class="text-gray-600 text-sm">9:41</div>
+        <div class="flex space-x-1">
+            <i class="fas fa-signal text-gray-600"></i>
+            <i class="fas fa-wifi text-gray-600"></i>
+            <i class="fas fa-battery-three-quarters text-gray-600"></i>
+        </div>
+    </div>
+    
+    <!-- 应用主容器 -->
+    <div class="max-w-4xl mx-auto px-4 py-6" id="app-container">
+        <!-- 顶部导航 -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-dark">衣橱管理</h1>
+                <p class="text-gray-600 text-sm">理性消费，高效管理</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-gray-600" id="search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-gray-600" id="stats-btn">
+                    <i class="fas fa-chart-pie"></i>
+                </button>
+                <div class="w-10 h-10 rounded-full bg-secondary overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="用户头像" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页面切换控制 -->
+        <div class="ios-segmented-control mb-8">
+            <button class="active" data-page="overview">概览</button>
+            <button data-page="closet">衣橱</button>
+            <button data-page="discard">断舍离</button>
+            <button data-page="insights">分析</button>
+        </div>
+        
+        <!-- 概览页面 -->
+        <div class="page active" id="overview-page">
+            <!-- 头部统计区 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-white rounded-2xl p-5 card-shadow">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                            <i class="fas fa-tag text-primary text-lg"></i>
+                        </div>
+                        <h3 class="font-bold text-dark">衣橱总值</h3>
+                    </div>
+                    <p class="text-2xl font-bold text-dark">¥12,580</p>
+                    <p class="text-gray-600 text-sm mt-1">共42件衣物</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-5 card-shadow">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                            <i class="fas fa-tshirt text-blue-500 text-lg"></i>
+                        </div>
+                        <h3 class="font-bold text-dark">总穿着次数</h3>
+                    </div>
+                    <p class="text-2xl font-bold text-dark">1,248次</p>
+                    <p class="text-gray-600 text-sm mt-1">平均每件29.7次</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-5 card-shadow">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
+                            <i class="fas fa-calculator text-purple-500 text-lg"></i>
+                        </div>
+                        <h3 class="font-bold text-dark">整体平均成本</h3>
+                    </div>
+                    <p class="text-2xl font-bold text-dark">¥8.42/次</p>
+                    <p class="text-gray-600 text-sm mt-1">比上月降低12%</p>
+                </div>
+            </div>
+            
+            <!-- 断舍离提示区（当有待处理衣物时） -->
+            <div class="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-5 card-shadow discarding-section mb-8 border border-red-100 discard-pulse">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                            <i class="fas fa-exclamation-triangle text-warning text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-dark">断舍离建议</h3>
+                            <p class="text-gray-600 text-sm">有3件衣物达到淘汰标准</p>
+                        </div>
+                    </div>
+                    <span class="bg-warning text-white text-xs font-bold px-3 py-1 rounded-full">3</span>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-gray-600 mb-2">达标衣物平均成本已低于设定阈值，建议淘汰以节省空间。</p>
+                    <div class="flex items-center text-sm">
+                        <span class="text-dark font-medium mr-2">预计节省：</span>
+                        <span class="text-warning font-bold mr-4">¥2,850</span>
+                        <span class="text-dark font-medium mr-2">释放空间：</span>
+                        <span class="text-primary font-bold">约15%衣橱空间</span>
+                    </div>
+                </div>
+                
+                <button class="w-full bg-warning text-white font-medium py-3 rounded-xl hover:bg-red-600 transition" id="view-discard-btn">
+                    查看断舍离建议
+                </button>
+            </div>
+            
+            <!-- 最近添加衣物 -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-dark">最近添加</h2>
+                    <button class="text-primary font-medium text-sm" id="add-clothing-btn">
+                        <i class="fas fa-plus mr-1"></i> 添加衣物
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="recent-clothing">
+                    <!-- 衣物卡片将通过JavaScript动态添加 -->
+                </div>
+            </div>
+            
+            <!-- 穿着趋势 -->
+            <div class="bg-white rounded-2xl p-5 card-shadow">
+                <h3 class="font-bold text-dark mb-4">本月穿着趋势</h3>
+                <div class="flex items-end h-40 mb-4">
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 80%;"></div>
+                        <span class="text-xs text-gray-600">周一</span>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 60%;"></div>
+                        <span class="text-xs text-gray-600">周二</span>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 90%;"></div>
+                        <span class="text-xs text-gray-600">周三</span>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 70%;"></div>
+                        <span class="text-xs text-gray-600">周四</span>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 85%;"></div>
+                        <span class="text-xs text-gray-600">周五</span>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 50%;"></div>
+                        <span class="text-xs text-gray-600">周六</span>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-3/4 bg-primary rounded-t-lg mb-1" style="height: 40%;"></div>
+                        <span class="text-xs text-gray-600">周日</span>
+                    </div>
+                </div>
+                <div class="text-center text-gray-600 text-sm">
+                    本周平均穿着成本：<span class="font-bold text-primary">¥7.82/次</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 衣橱页面 -->
+        <div class="page" id="closet-page">
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-dark">我的衣橱</h2>
+                    <div class="flex space-x-2">
+                        <button class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-gray-600">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                        <button class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-gray-600">
+                            <i class="fas fa-sort-amount-down"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 类别筛选 -->
+                <div class="flex overflow-x-auto pb-2 mb-6 space-x-2">
+                    <button class="px-4 py-2 bg-primary text-white rounded-full text-sm font-medium whitespace-nowrap">全部</button>
+                    <button class="px-4 py-2 bg-secondary text-gray-600 rounded-full text-sm font-medium whitespace-nowrap">上衣</button>
+                    <button class="px-4 py-2 bg-secondary text-gray-600 rounded-full text-sm font-medium whitespace-nowrap">下装</button>
+                    <button class="px-4 py-2 bg-secondary text-gray-600 rounded-full text-sm font-medium whitespace-nowrap">外套</button>
+                    <button class="px-4 py-2 bg-secondary text-gray-600 rounded-full text-sm font-medium whitespace-nowrap">鞋履</button>
+                    <button class="px-4 py-2 bg-secondary text-gray-600 rounded-full text-sm font-medium whitespace-nowrap">配饰</button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="closet-clothing">
+                <!-- 衣物卡片将通过JavaScript动态添加 -->
+            </div>
+        </div>
+        
+        <!-- 断舍离页面 -->
+        <div class="page" id="discard-page">
+            <div class="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-5 card-shadow mb-8">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                        <i class="fas fa-recycle text-warning text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-dark text-xl">断舍离顾问</h2>
+                        <p class="text-gray-600">基于穿着成本的理性淘汰建议</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <p class="text-gray-600 mb-3">系统检测到以下衣物已达到您的淘汰阈值（平均每次穿着成本低于设定值）。淘汰这些衣物可以为您节省空间和后续维护成本。</p>
+                    <div class="bg-white rounded-xl p-4 mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium text-dark">当前淘汰阈值设定</span>
+                            <span class="font-bold text-warning">¥15/次</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            根据您的衣物类别设定不同阈值，达到阈值表示衣物已物尽其用。
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-bold text-dark mb-4">达标衣物（3件）</h3>
+                    <div id="discard-clothing">
+                        <!-- 断舍离衣物卡片将通过JavaScript动态添加 -->
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-4 mb-6">
+                    <h4 class="font-bold text-dark mb-3">淘汰效益分析</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-secondary rounded-lg p-3">
+                            <div class="text-gray-600 text-sm mb-1">节省金额</div>
+                            <div class="text-2xl font-bold text-dark">¥2,850</div>
+                        </div>
+                        <div class="bg-secondary rounded-lg p-3">
+                            <div class="text-gray-600 text-sm mb-1">释放空间</div>
+                            <div class="text-2xl font-bold text-dark">15%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button class="flex-1 bg-white border border-gray-300 text-dark font-medium py-3 rounded-xl hover:bg-gray-50 transition">
+                        暂时保留
+                    </button>
+                    <button class="flex-1 bg-warning text-white font-medium py-3 rounded-xl hover:bg-red-600 transition" id="confirm-discard-btn">
+                        确认淘汰
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-8">
+                <h3 class="font-bold text-dark mb-4 text-xl">淘汰历史</h3>
+                <div class="space-y-4">
+                    <div class="bg-white rounded-xl p-4 card-shadow">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-dark">春季清理</h4>
+                                <p class="text-gray-600 text-sm">2023年4月15日</p>
+                            </div>
+                            <span class="bg-green-100 text-primary text-xs font-bold px-3 py-1 rounded-full">已完成</span>
+                        </div>
+                        <p class="text-gray-600 mb-2">淘汰了5件衣物，节省¥3,200，释放12%衣橱空间。</p>
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-leaf mr-1"></i> 减少了约8.5kg碳足迹
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-4 card-shadow">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-dark">冬季换季</h4>
+                                <p class="text-gray-600 text-sm">2022年11月10日</p>
+                            </div>
+                            <span class="bg-green-100 text-primary text-xs font-bold px-3 py-1 rounded-full">已完成</span>
+                        </div>
+                        <p class="text-gray-600 mb-2">淘汰了3件衣物，节省¥1,850，释放8%衣橱空间。</p>
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-leaf mr-1"></i> 减少了约5.2kg碳足迹
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 分析页面 -->
+        <div class="page" id="insights-page">
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-dark mb-6">衣橱分析</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white rounded-2xl p-5 card-shadow">
+                        <h3 class="font-bold text-dark mb-4">类别分布</h3>
+                        <div class="flex items-center justify-center">
+                            <div class="relative w-40 h-40">
+                                <!-- 饼图模拟 -->
+                                <div class="absolute inset-0 rounded-full border-8 border-primary"></div>
+                                <div class="absolute inset-0 rounded-full border-8 border-blue-500 transform -rotate-45"></div>
+                                <div class="absolute inset-0 rounded-full border-8 border-yellow-500 transform -rotate-90"></div>
+                                <div class="absolute inset-0 rounded-full border-8 border-purple-500 transform -rotate-135"></div>
+                                <div class="absolute inset-0 rounded-full border-8 border-pink-500 transform -rotate-180"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-dark">42</div>
+                                        <div class="text-gray-600 text-sm">总件数</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                                    <span class="text-gray-600">上衣</span>
+                                </div>
+                                <span class="font-bold text-dark">16件 (38%)</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                                    <span class="text-gray-600">下装</span>
+                                </div>
+                                <span class="font-bold text-dark">10件 (24%)</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                                    <span class="text-gray-600">外套</span>
+                                </div>
+                                <span class="font-bold text-dark">8件 (19%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-5 card-shadow">
+                        <h3 class="font-bold text-dark mb-4">成本效率排行</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-medium text-dark">白色衬衫</span>
+                                    <span class="text-sm font-bold text-primary">¥2.15/次</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 95%;"></div>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-600 mt-1">
+                                    <span>已穿68次</span>
+                                    <span>购入价¥146</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-medium text-dark">蓝色牛仔裤</span>
+                                    <span class="text-sm font-bold text-primary">¥3.42/次</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 85%;"></div>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-600 mt-1">
+                                    <span>已穿42次</span>
+                                    <span>购入价¥289</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-medium text-dark">黑色连衣裙</span>
+                                    <span class="text-sm font-bold text-primary">¥4.78/次</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 75%;"></div>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-600 mt-1">
+                                    <span>已穿35次</span>
+                                    <span>购入价¥299</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-5 card-shadow mb-8">
+                    <h3 class="font-bold text-dark mb-4">月度穿着趋势</h3>
+                    <div class="h-48 flex items-end space-x-2">
+                        <!-- 柱状图模拟 -->
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 30%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">1月</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 40%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">2月</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 50%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">3月</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 65%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">4月</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 80%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">5月</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 90%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">6月</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="w-3/4 bg-primary rounded-t-lg" style="height: 70%;"></div>
+                            <span class="text-xs text-gray-600 mt-2">7月</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-5 card-shadow">
+                    <h3 class="font-bold text-dark mb-4">优化建议</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-3 mt-1">
+                                <i class="fas fa-lightbulb text-primary"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-dark mb-1">减少重复购买</h4>
+                                <p class="text-gray-600 text-sm">您有4件类似款式的白色T恤，建议下次购买前先查看已有衣物。</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3 mt-1">
+                                <i class="fas fa-chart-line text-blue-500"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-dark mb-1">提高使用频率</h4>
+                                <p class="text-gray-600 text-sm">您有3件外套近30天未穿着，考虑搭配其他衣物增加使用率。</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3 mt-1">
+                                <i class="fas fa-coins text-purple-500"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-dark mb-1">投资高品质单品</h4>
+                                <p class="text-gray-600 text-sm">根据历史数据，您的羊毛大衣成本效率最高，建议优先投资此类单品。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加衣物模态框 -->
+    <div class="modal" id="add-clothing-modal">
+        <div class="modal-content">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-dark">添加新衣物</h2>
+                    <button class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-gray-600" id="close-add-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-dark font-medium mb-2">衣物名称</label>
+                        <input type="text" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary" placeholder="例如：白色棉质衬衫" id="clothing-name">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-dark font-medium mb-2">类别</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="category-btn p-3 border border-gray-300 rounded-xl text-center" data-category="上衣">
+                                <i class="fas fa-tshirt text-xl mb-1"></i>
+                                <div class="text-sm">上衣</div>
+                            </button>
+                            <button class="category-btn p-3 border border-gray-300 rounded-xl text-center" data-category="下装">
+                                <i class="fas fa-vest text-xl mb-1"></i>
+                                <div class="text-sm">下装</div>
+                            </button>
+                            <button class="category-btn p-3 border border-gray-300 rounded-xl text-center" data-category="外套">
+                                <i class="fas fa-vest text-xl mb-1"></i>
+                                <div class="text-sm">外套</div>
+                            </button>
+                            <button class="category-btn p-3 border border-gray-300 rounded-xl text-center" data-category="鞋履">
+                                <i class="fas fa-shoe-prints text-xl mb-1"></i>
+                                <div class="text-sm">鞋履</div>
+                            </button>
+                            <button class="category-btn p-3 border border-gray-300 rounded-xl text-center" data-category="配饰">
+                                <i class="fas fa-mitten text-xl mb-1"></i>
+                                <div class="text-sm">配饰</div>
+                            </button>
+                            <button class="category-btn p-3 border border-gray-300 rounded-xl text-center" data-category="其他">
+                                <i class="fas fa-plus text-xl mb-1"></i>
+                                <div class="text-sm">其他</div>
+                            </button>
+                        </div>
+                        <input type="hidden" id="selected-category" value="">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-dark font-medium mb-2">购入价格（元）</label>
+                        <input type="number" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary" placeholder="例如：299" id="clothing-price">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-dark font-medium mb-2">购买日期</label>
+                        <input type="date" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary" id="clothing-date">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-dark font-medium mb-2">标签（可选）</label>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <span class="tag bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">通勤</span>
+                            <span class="tag bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">休闲</span>
+                            <span class="tag bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">正式</span>
+                            <span class="tag bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">运动</span>
+                        </div>
+                        <input type="text" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary" placeholder="输入标签，按回车添加" id="clothing-tags">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-dark font-medium mb-2">衣物图片（可选）</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-600 mb-2">点击上传图片或拖放至此</p>
+                            <p class="text-gray-500 text-sm">支持JPG、PNG格式，最大5MB</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 flex space-x-3">
+                    <button class="flex-1 border border-gray-300 text-dark font-medium py-3 rounded-xl hover:bg-gray-50 transition" id="cancel-add">
+                        取消
+                    </button>
+                    <button class="flex-1 bg-primary text-white font-medium py-3 rounded-xl hover:bg-green-600 transition" id="save-clothing">
+                        保存衣物
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 衣物详情模态框 -->
+    <div class="modal" id="clothing-detail-modal">
+        <div class="modal-content">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-dark" id="detail-name">白色衬衫</h2>
+                        <p class="text-gray-600" id="detail-category">上衣 · 通勤</p>
+                    </div>
+                    <button class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-gray-600" id="close-detail-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-6">
+                    <img src="https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=400&q=80" alt="衣物图片" class="w-full h-48 object-cover rounded-xl mb-4">
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-secondary rounded-xl p-4">
+                            <div class="text-gray-600 text-sm mb-1">购入价格</div>
+                            <div class="text-2xl font-bold text-dark" id="detail-price">¥299</div>
+                        </div>
+                        <div class="bg-secondary rounded-xl p-4">
+                            <div class="text-gray-600 text-sm mb-1">穿着次数</div>
+                            <div class="text-2xl font-bold text-dark" id="detail-wears">24次</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium text-dark">平均每次穿着成本</span>
+                            <span class="text-lg font-bold text-primary" id="detail-cost">¥12.46/次</span>
+                        </div>
+                        <div class="progress-bar mb-1">
+                            <div class="progress-fill" id="detail-progress" style="width: 75%;"></div>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-600">
+                            <span>当前成本</span>
+                            <span>目标阈值: ¥15/次</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="font-medium text-dark mb-3">详细信息</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-gray-600 text-sm">购买日期</div>
+                                <div class="font-medium text-dark" id="detail-date">2023-03-15</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-600 text-sm">添加日期</div>
+                                <div class="font-medium text-dark">2023-03-16</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-600 text-sm">最近穿着</div>
+                                <div class="font-medium text-dark">3天前</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-600 text-sm">状态</div>
+                                <div class="font-medium text-dark" id="detail-status">使用中</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button class="flex-1 border border-gray-300 text-dark font-medium py-3 rounded-xl hover:bg-gray-50 transition" id="record-wear">
+                        <i class="fas fa-tshirt mr-2"></i> 记录穿着
+                    </button>
+                    <button class="flex-1 bg-primary text-white font-medium py-3 rounded-xl hover:bg-green-600 transition" id="edit-clothing">
+                        <i class="fas fa-edit mr-2"></i> 编辑信息
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 记录穿着成功提示 -->
+    <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50" id="success-toast" style="display: none;">
+        <div class="bg-primary text-white px-6 py-3 rounded-xl shadow-lg flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span>成功记录一次穿着！</span>
+        </div>
+    </div>
+    
+    <!-- 底部导航（模拟iOS） -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 px-6 z-40">
+        <div class="flex justify-between">
+            <button class="flex flex-col items-center text-primary" data-page="overview">
+                <i class="fas fa-home text-lg mb-1"></i>
+                <span class="text-xs">概览</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500" data-page="closet">
+                <i class="fas fa-tshirt text-lg mb-1"></i>
+                <span class="text-xs">衣橱</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500" id="add-float-btn">
+                <div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center -mt-6 shadow-lg">
+                    <i class="fas fa-plus text-white text-xl"></i>
+                </div>
+                <span class="text-xs mt-2 text-gray-500">添加</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500" data-page="discard">
+                <i class="fas fa-recycle text-lg mb-1"></i>
+                <span class="text-xs">断舍离</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500" data-page="insights">
+                <i class="fas fa-chart-pie text-lg mb-1"></i>
+                <span class="text-xs">分析</span>
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // 衣物数据
+        const clothingItems = [
+            {
+                id: 1,
+                name: "白色棉质衬衫",
+                category: "上衣",
+                price: 299,
+                wears: 24,
+                avgCost: 12.46,
+                status: "active",
+                tags: ["通勤", "正式"],
+                date: "2023-03-15",
+                image: "https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 15,
+                progress: 75
+            },
+            {
+                id: 2,
+                name: "蓝色牛仔裤",
+                category: "下装",
+                price: 489,
+                wears: 42,
+                avgCost: 11.64,
+                status: "active",
+                tags: ["休闲", "通勤"],
+                date: "2022-11-20",
+                image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 18,
+                progress: 85
+            },
+            {
+                id: 3,
+                name: "黑色羊毛大衣",
+                category: "外套",
+                price: 1250,
+                wears: 36,
+                avgCost: 34.72,
+                status: "active",
+                tags: ["正式", "冬季"],
+                date: "2022-10-05",
+                image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 40,
+                progress: 20
+            },
+            {
+                id: 4,
+                name: "白色运动鞋",
+                category: "鞋履",
+                price: 599,
+                wears: 68,
+                avgCost: 8.81,
+                status: "ready_to_discard",
+                tags: ["运动", "休闲"],
+                date: "2022-08-12",
+                image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 15,
+                progress: 95
+            },
+            {
+                id: 5,
+                name: "红色连衣裙",
+                category: "上衣",
+                price: 399,
+                wears: 12,
+                avgCost: 33.25,
+                status: "active",
+                tags: ["正式", "宴会"],
+                date: "2023-05-20",
+                image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 35,
+                progress: 15
+            },
+            {
+                id: 6,
+                name: "灰色针织衫",
+                category: "上衣",
+                price: 199,
+                wears: 8,
+                avgCost: 24.88,
+                status: "ready_to_discard",
+                tags: ["休闲", "秋季"],
+                date: "2023-02-10",
+                image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 15,
+                progress: 98
+            }
+        ];
+        
+        // 断舍离衣物数据
+        const discardingItems = [
+            {
+                id: 4,
+                name: "白色运动鞋",
+                category: "鞋履",
+                price: 599,
+                wears: 68,
+                avgCost: 8.81,
+                tags: ["运动", "休闲"],
+                date: "2022-08-12",
+                image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 15
+            },
+            {
+                id: 6,
+                name: "灰色针织衫",
+                category: "上衣",
+                price: 199,
+                wears: 8,
+                avgCost: 24.88,
+                tags: ["休闲", "秋季"],
+                date: "2023-02-10",
+                image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 15
+            },
+            {
+                id: 7,
+                name: "卡其色短裤",
+                category: "下装",
+                price: 159,
+                wears: 5,
+                avgCost: 31.8,
+                tags: ["休闲", "夏季"],
+                date: "2022-06-18",
+                image: "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                threshold: 15
+            }
+        ];
+        
+        // 初始化函数
+        document.addEventListener('DOMContentLoaded', function() {
+            // 渲染衣物卡片
+            renderClothingCards();
+            
+            // 渲染断舍离衣物卡片
+            renderDiscardingCards();
+            
+            // 设置当前日期为默认购买日期
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('clothing-date').value = today;
+            
+            // 页面切换功能
+            document.querySelectorAll('.ios-segmented-control button, .fixed.bottom-0 button[data-page]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    switchPage(pageId);
+                });
+            });
+            
+            // 底部导航按钮点击事件
+            document.querySelectorAll('.fixed.bottom-0 button[data-page]').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 更新底部导航图标状态
+                    document.querySelectorAll('.fixed.bottom-0 button[data-page]').forEach(btn => {
+                        btn.classList.remove('text-primary');
+                        btn.classList.add('text-gray-500');
+                    });
+                    
+                    this.classList.remove('text-gray-500');
+                    this.classList.add('text-primary');
+                    
+                    // 更新分段控制状态
+                    document.querySelectorAll('.ios-segmented-control button').forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.getAttribute('data-page') === this.getAttribute('data-page')) {
+                            btn.classList.add('active');
+                        }
+                    });
+                });
+            });
+            
+            // 添加衣物按钮
+            document.getElementById('add-clothing-btn').addEventListener('click', openAddModal);
+            document.getElementById('add-float-btn').addEventListener('click', openAddModal);
+            
+            // 查看断舍离建议按钮
+            document.getElementById('view-discard-btn').addEventListener('click', function() {
+                switchPage('discard');
+            });
+            
+            // 添加衣物模态框
+            document.getElementById('close-add-modal').addEventListener('click', closeAddModal);
+            document.getElementById('cancel-add').addEventListener('click', closeAddModal);
+            
+            // 类别选择
+            document.querySelectorAll('.category-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    document.querySelectorAll('.category-btn').forEach(btn => {
+                        btn.classList.remove('border-primary', 'bg-green-50');
+                        btn.classList.add('border-gray-300');
+                    });
+                    
+                    this.classList.remove('border-gray-300');
+                    this.classList.add('border-primary', 'bg-green-50');
+                    
+                    document.getElementById('selected-category').value = this.getAttribute('data-category');
+                });
+            });
+            
+            // 保存衣物
+            document.getElementById('save-clothing').addEventListener('click', function() {
+                const name = document.getElementById('clothing-name').value;
+                const category = document.getElementById('selected-category').value;
+                const price = document.getElementById('clothing-price').value;
+                
+                if (!name || !category || !price) {
+                    alert('请填写完整的衣物信息');
+                    return;
+                }
+                
+                // 模拟添加衣物
+                const newItem = {
+                    id: clothingItems.length + 1,
+                    name: name,
+                    category: category,
+                    price: parseInt(price),
+                    wears: 0,
+                    avgCost: parseInt(price),
+                    status: "active",
+                    tags: [],
+                    date: document.getElementById('clothing-date').value,
+                    image: "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80",
+                    threshold: 15,
+                    progress: 0
+                };
+                
+                clothingItems.unshift(newItem);
+                
+                // 重新渲染
+                renderClothingCards();
+                
+                // 关闭模态框
+                closeAddModal();
+                
+                // 显示成功提示
+                showSuccessToast('衣物添加成功！');
+                
+                // 切换到衣橱页面
+                switchPage('closet');
+            });
+            
+            // 记录穿着成功提示
+            document.getElementById('record-wear').addEventListener('click', function() {
+                showSuccessToast('成功记录一次穿着！');
+                setTimeout(() => {
+                    closeDetailModal();
+                }, 1000);
+            });
+            
+            // 确认淘汰按钮
+            document.getElementById('confirm-discard-btn').addEventListener('click', function() {
+                if (confirm('确定要淘汰这些衣物吗？此操作不可撤销。')) {
+                    showSuccessToast('已成功淘汰3件衣物，节省¥2,850！');
+                    
+                    // 模拟从衣橱中移除断舍离衣物
+                    discardingItems.forEach(discardItem => {
+                        const index = clothingItems.findIndex(item => item.id === discardItem.id);
+                        if (index !== -1) {
+                            clothingItems.splice(index, 1);
+                        }
+                    });
+                    
+                    // 清空断舍离列表
+                    discardingItems.length = 0;
+                    
+                    // 重新渲染
+                    renderClothingCards();
+                    renderDiscardingCards();
+                    
+                    // 隐藏断舍离提示区
+                    document.querySelector('.discarding-section').style.display = 'none';
+                    
+                    // 显示成功消息
+                    setTimeout(() => {
+                        switchPage('overview');
+                    }, 1500);
+                }
+            });
+            
+            // 衣物详情模态框
+            document.getElementById('close-detail-modal').addEventListener('click', closeDetailModal);
+            
+            // 搜索和统计按钮（模拟功能）
+            document.getElementById('search-btn').addEventListener('click', function() {
+                alert('搜索功能（模拟）');
+            });
+            
+            document.getElementById('stats-btn').addEventListener('click', function() {
+                switchPage('insights');
+            });
+        });
+        
+        // 渲染衣物卡片
+        function renderClothingCards() {
+            const recentContainer = document.getElementById('recent-clothing');
+            const closetContainer = document.getElementById('closet-clothing');
+            
+            // 清空容器
+            recentContainer.innerHTML = '';
+            closetContainer.innerHTML = '';
+            
+            // 显示最近3件衣物
+            const recentItems = clothingItems.slice(0, 3);
+            recentItems.forEach(item => {
+                recentContainer.appendChild(createClothingCard(item));
+            });
+            
+            // 显示所有衣物
+            clothingItems.forEach(item => {
+                closetContainer.appendChild(createClothingCard(item));
+            });
+        }
+        
+        // 渲染断舍离衣物卡片
+        function renderDiscardingCards() {
+            const container = document.getElementById('discard-clothing');
+            
+            // 清空容器
+            container.innerHTML = '';
+            
+            // 显示所有断舍离衣物
+            discardingItems.forEach(item => {
+                container.appendChild(createDiscardingCard(item));
+            });
+        }
+        
+        // 创建衣物卡片
+        function createClothingCard(item) {
+            const card = document.createElement('div');
+            card.className = `bg-white rounded-2xl p-4 card-shadow card-hover ${item.status === 'ready_to_discard' ? 'status-ready' : 'status-active'}`;
+            card.dataset.id = item.id;
+            
+            // 计算进度条颜色
+            let progressColor = 'bg-primary';
+            if (item.progress > 80) {
+                progressColor = 'bg-warning';
+            }
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="font-bold text-dark">${item.name}</h3>
+                        <div class="flex items-center mt-1">
+                            <span class="bg-secondary text-gray-600 text-xs px-2 py-1 rounded mr-2">${item.category}</span>
+                            ${item.tags.map(tag => `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    <span class="text-sm font-bold ${item.avgCost < item.threshold ? 'text-warning' : 'text-primary'}">¥${item.avgCost.toFixed(2)}/次</span>
+                </div>
+                
+                <div class="mb-4">
+                    <img src="${item.image}" alt="${item.name}" class="clothing-image">
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm text-gray-600">成本进度</span>
+                        <span class="text-xs text-gray-600">目标: ¥${item.threshold}/次</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${progressColor}" style="width: ${item.progress}%;"></div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div>
+                        <div class="text-gray-600 text-xs">购入价</div>
+                        <div class="font-bold text-dark">¥${item.price}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-600 text-xs">穿着次数</div>
+                        <div class="font-bold text-dark">${item.wears}次</div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button class="record-wear-btn flex-1 bg-secondary text-dark text-sm font-medium py-2 rounded-lg mr-2" data-id="${item.id}">
+                        <i class="fas fa-tshirt mr-1"></i> 记录穿着
+                    </button>
+                    <button class="view-detail-btn flex-1 bg-primary text-white text-sm font-medium py-2 rounded-lg" data-id="${item.id}">
+                        查看详情
+                    </button>
+                </div>
+            `;
+            
+            // 添加事件监听器
+            card.querySelector('.view-detail-btn').addEventListener('click', function() {
+                const itemId = parseInt(this.getAttribute('data-id'));
+                const item = clothingItems.find(i => i.id === itemId);
+                if (item) {
+                    openDetailModal(item);
+                }
+            });
+            
+            card.querySelector('.record-wear-btn').addEventListener('click', function() {
+                const itemId = parseInt(this.getAttribute('data-id'));
+                const item = clothingItems.find(i => i.id === itemId);
+                if (item) {
+                    // 模拟记录穿着
+                    item.wears += 1;
+                    item.avgCost = item.price / item.wears;
+                    item.progress = Math.min(100, Math.round((item.avgCost / item.threshold) * 100));
+                    
+                    // 如果成本低于阈值，标记为准备淘汰
+                    if (item.avgCost < item.threshold && item.status !== 'ready_to_discard') {
+                        item.status = 'ready_to_discard';
+                        
+                        // 添加到断舍离列表（如果尚未添加）
+                        if (!discardingItems.find(i => i.id === item.id)) {
+                            discardingItems.push({...item});
+                            renderDiscardingCards();
+                        }
+                    }
+                    
+                    // 重新渲染卡片
+                    renderClothingCards();
+                    
+                    // 显示成功提示
+                    showSuccessToast(`已为"${item.name}"记录一次穿着`);
+                }
+            });
+            
+            return card;
+        }
+        
+        // 创建断舍离衣物卡片
+        function createDiscardingCard(item) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-xl p-4 card-shadow mb-3 border border-red-200';
+            
+            card.innerHTML = `
+                <div class="flex">
+                    <div class="w-16 h-16 rounded-lg overflow-hidden mr-3">
+                        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-dark">${item.name}</h4>
+                            <span class="text-warning text-sm font-bold">¥${item.avgCost.toFixed(2)}/次</span>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <span class="bg-secondary text-gray-600 text-xs px-2 py-1 rounded mr-2">${item.category}</span>
+                            <span class="text-gray-600 text-xs">已穿${item.wears}次</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <div>
+                                <span class="text-gray-600">购入价: </span>
+                                <span class="font-bold">¥${item.price}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">阈值: </span>
+                                <span class="font-bold">¥${item.threshold}/次</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // 切换页面
+        function switchPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            document.getElementById(`${pageId}-page`).classList.add('active');
+            
+            // 更新分段控制状态
+            document.querySelectorAll('.ios-segmented-control button').forEach(button => {
+                button.classList.remove('active');
+                if (button.getAttribute('data-page') === pageId) {
+                    button.classList.add('active');
+                }
+            });
+            
+            // 更新底部导航状态
+            document.querySelectorAll('.fixed.bottom-0 button[data-page]').forEach(button => {
+                button.classList.remove('text-primary');
+                button.classList.add('text-gray-500');
+                
+                if (button.getAttribute('data-page') === pageId) {
+                    button.classList.remove('text-gray-500');
+                    button.classList.add('text-primary');
+                }
+            });
+        }
+        
+        // 打开添加衣物模态框
+        function openAddModal() {
+            document.getElementById('add-clothing-modal').classList.add('active');
+        }
+        
+        // 关闭添加衣物模态框
+        function closeAddModal() {
+            document.getElementById('add-clothing-modal').classList.remove('active');
+            
+            // 重置表单
+            document.getElementById('clothing-name').value = '';
+            document.getElementById('selected-category').value = '';
+            document.getElementById('clothing-price').value = '';
+            document.getElementById('clothing-tags').value = '';
+            
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('border-primary', 'bg-green-50');
+                btn.classList.add('border-gray-300');
+            });
+        }
+        
+        // 打开衣物详情模态框
+        function openDetailModal(item) {
+            document.getElementById('detail-name').textContent = item.name;
+            document.getElementById('detail-category').textContent = `${item.category} · ${item.tags.join(', ')}`;
+            document.getElementById('detail-price').textContent = `¥${item.price}`;
+            document.getElementById('detail-wears').textContent = `${item.wears}次`;
+            document.getElementById('detail-cost').textContent = `¥${item.avgCost.toFixed(2)}/次`;
+            document.getElementById('detail-progress').style.width = `${item.progress}%`;
+            document.getElementById('detail-date').textContent = item.date;
+            document.getElementById('detail-status').textContent = item.status === 'active' ? '使用中' : '建议淘汰';
+            
+            // 根据状态设置颜色
+            if (item.status === 'ready_to_discard') {
+                document.getElementById('detail-status').classList.add('text-warning');
+            } else {
+                document.getElementById('detail-status').classList.remove('text-warning');
+            }
+            
+            document.getElementById('clothing-detail-modal').classList.add('active');
+        }
+        
+        // 关闭衣物详情模态框
+        function closeDetailModal() {
+            document.getElementById('clothing-detail-modal').classList.remove('active');
+        }
+        
+        // 显示成功提示
+        function showSuccessToast(message) {
+            const toast = document.getElementById('success-toast');
+            toast.querySelector('span').textContent = message;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
